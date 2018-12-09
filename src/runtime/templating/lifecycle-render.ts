@@ -10,7 +10,8 @@ import { IResourceDescriptions, RuntimeCompilationResources } from '../resource'
 import { ICustomAttribute, ICustomAttributeType } from './custom-attribute';
 import { ICustomElement, ICustomElementType } from './custom-element';
 import { ViewFactory } from './view';
-import { IFabricNode, IKonvaRenderLocation, IFabricNodeSequence, IFabricNodeSequenceFactory, FabricNodeSequenceFactory, BlessedNodeSequence } from '../fabric-dom';
+import { IFabricNode, IFabricRenderLocation, IFabricNodeSequence, IFabricNodeSequenceFactory, FabricNodeSequenceFactory, BlessedNodeSequence } from '../fabric-dom';
+import { IFabricVNode } from 'runtime/fabric-vnode';
 
 
 export interface ITemplateCompiler {
@@ -28,7 +29,7 @@ export enum ViewCompileFlags {
 
 export type IElementHydrationOptions = Immutable<Pick<IHydrateElementInstruction, 'parts'>>;
 
-export interface ICustomElementHost extends IKonvaRenderLocation {
+export interface ICustomElementHost extends IFabricRenderLocation {
   $customElement?: ICustomElement;
 }
 
@@ -73,7 +74,7 @@ export interface ILifecycleRender {
    * This is the first "hydrate" lifecycle hook. It happens only once per instance (contrary to bind/attach
    * which can happen many times per instance), though it can happen many times per type (once for each instance)
    */
-  render?(host: IKonvaNode, parts: Immutable<Pick<IHydrateElementInstruction, 'parts'>>): IElementTemplateProvider | void;
+  render?(host: IFabricVNode, parts: Immutable<Pick<IHydrateElementInstruction, 'parts'>>): IElementTemplateProvider | void;
 }
 
 /*@internal*/
@@ -88,7 +89,7 @@ export function $hydrateAttribute(this: Writable<ICustomAttribute>, renderingEng
 }
 
 /*@internal*/
-export function $hydrateElement(this: Writable<ICustomElement>, renderingEngine: IRenderingEngine, host: IKonvaNode, options: IElementHydrationOptions = PLATFORM.emptyObject): void {
+export function $hydrateElement(this: Writable<ICustomElement>, renderingEngine: IRenderingEngine, host: IFabricVNode, options: IElementHydrationOptions = PLATFORM.emptyObject): void {
   const Type = this.constructor as ICustomElementType;
   const description = Type.description;
 
@@ -122,7 +123,7 @@ export const defaultShadowOptions = {
 
 function determineProjector(
   $customElement: ICustomElement,
-  host: IKonvaNode,
+  host: IFabricVNode,
   definition: TemplateDefinition
 ): IElementProjector {
   // if (definition.shadowOptions || definition.hasSlots) {
@@ -251,7 +252,7 @@ export class HostProjector implements IElementProjector {
     this.isAppHost = host.hasOwnProperty('$au');
   }
 
-  get children(): ArrayLike<IKonvaNode & ICustomElementHost> {
+  get children(): ArrayLike<IFabricVNode & ICustomElementHost> {
     return PLATFORM.emptyArray;
   }
 
@@ -259,7 +260,7 @@ export class HostProjector implements IElementProjector {
     // Do nothing since this scenario will never have children.
   }
 
-  public provideEncapsulationSource(parentEncapsulationSource: IKonvaNode): ICustomElementHost {
+  public provideEncapsulationSource(parentEncapsulationSource: IFabricVNode): ICustomElementHost {
     return (parentEncapsulationSource as ICustomElementHost) || this.host;
   }
 
@@ -428,7 +429,7 @@ export function findElements(nodes: ArrayLike<INode>): ICustomElement[] {
 // context for the template.
 export interface ITemplate {
   readonly renderContext: IRenderContext;
-  render(renderable: IRenderable, host?: IKonvaNode, parts?: TemplatePartDefinitions): void;
+  render(renderable: IRenderable, host?: IFabricVNode, parts?: TemplatePartDefinitions): void;
 }
 
 // This is the main implementation of ITemplate.
@@ -447,7 +448,7 @@ export class CompiledTemplate implements ITemplate {
     this.renderContext = createRenderContext(renderingEngine, parentRenderContext, templateDefinition.dependencies);
   }
 
-  public render(renderable: IRenderable, host?: IKonvaNode, parts?: TemplatePartDefinitions): void {
+  public render(renderable: IRenderable, host?: IFabricVNode, parts?: TemplatePartDefinitions): void {
     const nodes = (<Writable<IRenderable>>renderable).$nodes = this.factory.createNodeSequence();
     (<Writable<IRenderable>>renderable).$context = this.renderContext;
     this.renderContext.render(renderable, nodes.findTargets(), this.templateDefinition, host, parts);
@@ -473,7 +474,7 @@ export function createRenderContext(renderingEngine: IRenderingEngine, parentRen
   const elementProvider = new InstanceProvider();
   const instructionProvider = new InstanceProvider<ITargetedInstruction>();
   const factoryProvider = new ViewFactoryProvider(renderingEngine);
-  const renderLocationProvider = new InstanceProvider<IKonvaRenderLocation>();
+  const renderLocationProvider = new InstanceProvider<IFabricRenderLocation>();
   const renderer = context.get(IRenderer);
 
   DOM.registerElementResolver(context, elementProvider);
@@ -487,11 +488,11 @@ export function createRenderContext(renderingEngine: IRenderingEngine, parentRen
     context.register(...dependencies);
   }
 
-  context.render = function(this: IRenderContext, renderable: IRenderable, targets: ArrayLike<IKonvaNode>, templateDefinition: TemplateDefinition, host?: IKonvaNode, parts?: TemplatePartDefinitions): void {
+  context.render = function(this: IRenderContext, renderable: IRenderable, targets: ArrayLike<IFabricVNode>, templateDefinition: TemplateDefinition, host?: IFabricVNode, parts?: TemplatePartDefinitions): void {
     renderer.render(this, renderable, targets, templateDefinition, host, parts);
   };
 
-  context.beginComponentOperation = function(renderable: IRenderable, target: IKonvaNode, instruction: ITargetedInstruction, factory?: IViewFactory, parts?: TemplatePartDefinitions, location?: IKonvaRenderLocation): IDisposable {
+  context.beginComponentOperation = function(renderable: IRenderable, target: IFabricVNode, instruction: ITargetedInstruction, factory?: IViewFactory, parts?: TemplatePartDefinitions, location?: IFabricRenderLocation): IDisposable {
     renderableProvider.prepare(renderable);
     elementProvider.prepare(target);
     instructionProvider.prepare(instruction);
@@ -574,7 +575,7 @@ export class ViewFactoryProvider implements IResolver {
 
 export interface IRenderer {
   instructionRenderers: Record<string, IInstructionRenderer>;
-  render(context: IRenderContext, renderable: IRenderable, targets: ArrayLike<IKonvaNode>, templateDefinition: TemplateDefinition, host?: IKonvaNode, parts?: TemplatePartDefinitions): void;
+  render(context: IRenderContext, renderable: IRenderable, targets: ArrayLike<IFabricVNode>, templateDefinition: TemplateDefinition, host?: IFabricVNode, parts?: TemplatePartDefinitions): void;
 }
 
 export const IRenderer = DI.createInterface<IRenderer>().withDefault(x => x.singleton(Renderer));
@@ -629,7 +630,7 @@ export class Renderer implements IRenderer {
     });
   }
 
-  public render(context: IRenderContext, renderable: IRenderable, targets: ArrayLike<IKonvaNode>, definition: TemplateDefinition, host?: IKonvaNode, parts?: TemplatePartDefinitions): void {
+  public render(context: IRenderContext, renderable: IRenderable, targets: ArrayLike<IFabricVNode>, definition: TemplateDefinition, host?: IFabricVNode, parts?: TemplatePartDefinitions): void {
     const targetInstructions = definition.instructions;
     const instructionRenderers = this.instructionRenderers;
 

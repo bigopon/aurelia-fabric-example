@@ -9,7 +9,7 @@ import { IRenderable, IView, IViewFactory, State } from '../../lifecycle';
 import { CollectionObserver, IBatchedCollectionSubscriber, IObservedArray, IScope, LifecycleFlags, ObservedCollection } from '../../observation';
 import { bindable } from '../bindable';
 import { ICustomAttribute, templateController } from '../custom-attribute';
-import { IKonvaRenderLocation, IFabricNode } from '../../fabric-dom';
+import { IFabricRenderLocation, IFabricNode } from '../../fabric-dom';
 
 export interface Repeat<T extends ObservedCollection> extends ICustomAttribute, IBatchedCollectionSubscriber {}
 
@@ -32,7 +32,7 @@ export class Repeat<T extends ObservedCollection = IObservedArray> {
   public local: string;
 
   constructor(
-    public location: IKonvaRenderLocation,
+    public location: IFabricRenderLocation,
     public renderable: IRenderable,
     public factory: IViewFactory) { }
 

@@ -4,7 +4,7 @@ import { CompositionCoordinator, IView, IViewFactory } from '../../lifecycle';
 import { LifecycleFlags } from '../../observation';
 import { bindable } from '../bindable';
 import { ICustomAttribute, templateController } from '../custom-attribute';
-import { IKonvaRenderLocation } from '../../fabric-dom';
+import { IFabricRenderLocation } from '../../fabric-dom';
 
 export interface If extends ICustomAttribute {}
 @templateController('if')
@@ -21,7 +21,7 @@ export class If {
 
   constructor(
     public ifFactory: IViewFactory,
-    public location: IKonvaRenderLocation,
+    public location: IFabricRenderLocation,
     public coordinator: CompositionCoordinator) { }
 
   public binding(flags: LifecycleFlags): void {

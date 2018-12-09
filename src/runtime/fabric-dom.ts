@@ -1,10 +1,12 @@
 /// <reference path="./fabric-types.d.ts" />
 import { PLATFORM, DI, Constructable, Writable, IContainer, IResolver } from '../kernel';
 import { document, INode } from './dom';
+import { IFabricVNode } from './fabric-vnode';
+import { VNode } from 'dom/node';
 
 
-function isRenderLocation(node: IFabricNode): node is IKonvaRenderLocation {
-  return node instanceof konva.Node && node.nodeName === '#comment';
+function isRenderLocation(node: IFabricVNode): node is IFabricRenderLocation {
+  return node instanceof VNode && node.nodeName === '#comment' && node.text === 'au-end';
 }
 
 const FabricDomMap: Record<string, (node?: Element) => IFabricNode> = {};
@@ -37,34 +39,35 @@ export const FabricDOM = new class {
     template.innerHTML = markup;
     return template;
   }
-  convertToRenderLocation(node: any) {
+  convertToRenderLocation(node: IFabricVNode) {
     if (isRenderLocation(node)) {
       // it's already a RenderLocation (converted by FragmentNodeSequence)
       return node;
     }
-    if (!node.parent) {
+    if (!node.parentNode) {
       throw new Error('No parent???');
     }
-    const locationEnd = FabricDOM.createComment('au-end') as IKonvaRenderLocation;
-    const locationStart = FabricDOM.createComment('au-start') as IKonvaRenderLocation;
-    FabricDOM.replaceNode(locationEnd, node);
-    FabricDOM.insertBefore(locationStart, locationEnd);
+    const locationEnd = FabricDOM.createComment('au-end') as IFabricRenderLocation;
+    const locationStart = FabricDOM.createComment('au-start') as IFabricRenderLocation;
+    node.replaceWith(locationEnd);
+    locationEnd.parentNode.insertBefore(locationStart, locationEnd);
+    // FabricDOM.replaceNode(locationEnd, node);
+    // FabricDOM.insertBefore(locationStart, locationEnd);
     locationEnd.$start = locationStart;
     // locationStart.$nodes = null;
-    return locationEnd
+    return locationEnd;
   }
   /**
   * Create basic node of a PIXI DOM
   */
-  createComment(text: string): IFabricNode {
-    const dObj: IFabricNode = new konva.Node({});
-    dObj.nodeName = '#comment';
-    dObj.textContent = text;
+  createComment(text: string): IFabricVNode {
+    const dObj: IFabricVNode = new VNode('#comment', false);
+    dObj.text = text;
     return dObj;
   }
-  createTextNode(text: string): IFabricNode {
-    const textNode: IFabricNode = new konva.Text({ text });
-    textNode.nodeName = '#text';
+  createTextNode(text: string): IFabricVNode {
+    const textNode: IFabricVNode = new VNode('#text', false);
+    textNode.text = text;
     return textNode;
   }
   // createElement(tagName: 'Text'): TextBase;
@@ -118,19 +121,19 @@ export const FabricDOM = new class {
     // }
     throw new Error('Not easy to remove');
   }
-  replaceNode(newNode: IFabricNode, refNode: IFabricNode) {
+  replaceNode(newNode: IFabricVNode, refNode: IFabricVNode) {
     FabricDOM.insertBefore(newNode, refNode);
-    FabricDOM.remove(refNode);
+    refNode.remove();
     // refNode.parent.insertBefore(newNode, refNode);
     // refNode.parent.removeChild(refNode);
     return newNode;
   }
-  insertBefore<T extends IFabricNode = IFabricNode>(newNode: T, refNode: IFabricNode): T {
-    const parentNode = refNode.getParent();
+  insertBefore<T extends IFabricVNode = IFabricVNode>(newNode: T, refNode: IFabricVNode): T {
+    const parentNode = refNode.parentNode;
     if (!parentNode) {
       throw new Error('No parent');
     }
-    parentNode.add(newNode);
+    parentNode.insertBefore(newNode, refNode);
     return newNode;
   }
   appendChild<T extends IFabricNode = IFabricNode>(node: T, parentNode: IFabricNode): T {
@@ -170,9 +173,9 @@ export interface IFabricNode extends fabric.Object {
   nextSibling?: IFabricNode | null;
   previousSibling?: IFabricNode | null;
 }
-export const IKonvaRenderLocation = DI.createInterface<IKonvaRenderLocation>().noDefault();
-export interface IKonvaRenderLocation extends IFabricNode {
-  $start: IKonvaRenderLocation;
+export const IFabricRenderLocation = DI.createInterface<IFabricRenderLocation>().noDefault();
+export interface IFabricRenderLocation extends IFabricVNode {
+  $start: IFabricRenderLocation;
   $nodes: IFabricNodeSequence;
 }
 /**
@@ -263,14 +266,13 @@ export class FabricFragmentNodeSequence implements IFabricNodeSequence {
   public children: ReadonlyArray<IFabricNode>;
   private fragment: DocumentFragment;
   private targets: ReadonlyArray<IFabricNode>;
-  private start: IKonvaRenderLocation;
-  private end: IKonvaRenderLocation;
+  private start: IFabricRenderLocation;
+  private end: IFabricRenderLocation;
+  private vNodes: IFabricVNode[];
   constructor(fragment: DocumentFragment) {
     this.fragment = fragment;
-    const targetNodeList: IFabricNode[] = [];
-    const nsNodes = this.children = nodeToFabricVNodes(fragment.childNodes, null, targetNodeList);
-    // tslint:disable-next-line:no-any
-    // const targetNodeList = fragment.querySelectorAll('.au');
+    let targetNodeList: IFabricVNode[] = [];
+    const vNodes = this.vNodes = nodeToFabricVNodes(fragment.childNodes, null, targetNodeList);
     let i = 0;
     let ii = targetNodeList.length;
     const targets = this.targets = Array(ii);
@@ -297,21 +299,27 @@ export class FabricFragmentNodeSequence implements IFabricNodeSequence {
     //   childNodes[i] = childNodeList[i] as Writable<INode>;
     //   ++i;
     // }
-    const nodeCount = nsNodes.length;
-    this.firstChild = nodeCount > 0 ? nsNodes[0] : null;
-    this.lastChild = nodeCount > 0 ? nsNodes[nodeCount - 1] : null;
+    const nodeCount = vNodes.length;
+    // this.firstChild = nodeCount > 0 ? vNodes[0] : null;
+    // this.lastChild = nodeCount > 0 ? vNodes[nodeCount - 1] : null;
     this.start = this.end = null;
   }
+
   public findTargets(): ReadonlyArray<IFabricNode> {
+    // if (!this.targets)
     // tslint:disable-next-line:no-any
     return this.targets;
   }
-  public insertBefore(refNode: IFabricNode): void {
+
+  public insertBefore(refNode: IFabricVNode): void {
     // tslint:disable-next-line:no-any
-    const children = this.children;
-    while (children.length > 0) {
-      FabricDOM.insertBefore(children[0], refNode);
+    const children = this.vNodes;
+    for (let i = 0, ii = children.length; ii > i; ++i) {
+      FabricDOM.insertBefore(children[i], refNode);
     }
+    // while (children.length > 0) {
+    //   FabricDOM.insertBefore(children[0], refNode);
+    // }
     // internally we could generally assume that this is an IRenderLocation,
     // but since this is also public API we still need to double check
     // (or horrible things might happen)
@@ -332,18 +340,20 @@ export class FabricFragmentNodeSequence implements IFabricNodeSequence {
       // }
     }
   }
-  public appendTo(parent: IFabricNode): void {
+
+  public appendTo(parent: IFabricVNode): void {
     // tslint:disable-next-line:no-any
     // (<any>parent).appendChild(this.fragment);
     // parent.addChild(...this.children);
     // if (this.children.length === 1 && this.children[0].typeName === 'Page') {
 
     // }
-    this.children.forEach(c => FabricDOM.appendChild(c, parent));
+    this.vNodes.forEach(c => parent.appendChild(c));
     // this can never be a RenderLocation, and if for whatever reason we moved
     // from a RenderLocation to a host, make sure "start" and "end" are null
     this.start = this.end = null;
   }
+
   public remove(): void {
     // const fragment = this.fragment;
     // if (this.start !== null && this.start.$nodes === this) {
@@ -424,41 +434,56 @@ const enum NodeTypes {
   ELEMENT = 1,
   TEXT = 3,
 }
-function nodeToFabricVNodes(nodes: Node[] | ArrayLike<Node>, parent: IFabricNode = null, targets: IFabricNode[] = []): IFabricNode[] {
-  const results: IFabricNode[] = [];
+function nodeToFabricVNodes(nodes: Node[] | ArrayLike<Node>, parent: IFabricVNode | null, targets: IFabricVNode[]): IFabricVNode[] {
+  // const results: IFabricNode[] = [];
+  const vnodes: IFabricVNode[] = [];
   for (let i = 0, ii = nodes.length; ii > i; ++i) {
     const node = nodes[i];
-    let konvaNode: IFabricNode | null = null;
+    let fabricVNode: IFabricVNode | null = null;
+    // let konvaNode: IFabricNode | null = null;
     if (!node.nodeType) {
       throw new Error('No node type????');
     }
     switch (node.nodeType) {
       case NodeTypes.ELEMENT:
         const nodeName = nodes[i].nodeName;
-        konvaNode = FabricDOM.createElement(nodeName, node as Element);
-        // konvaNode.nodeType = NodeTypes.ELEMENT;
-        konvaNode.nodeName = nodeName;
-        if ((node as Element).classList.contains('au')) {
-          targets.push(konvaNode);
+        const attributes = (node as Element).attributes;
+        const isTarget = (node as Element).classList.contains('au');
+        fabricVNode = new VNode(nodeName, isTarget);
+        for (let i = 0, ii = attributes.length; ii > i; ++i) {
+          const { value, name }  = attributes[i];
+          fabricVNode.setAttribute(name, value);
         }
+        if (isTarget) {
+          targets.push(fabricVNode);
+        }
+        // konvaNode = FabricDOM.createElement(nodeName, node as Element);
+        // // konvaNode.nodeType = NodeTypes.ELEMENT;
+        // konvaNode.nodeName = nodeName;
+        // if ((node as Element).classList.contains('au')) {
+        //   targets.push(konvaNode);
+        // }
         break;
-      // case NodeTypes.TEXT:
-      //   nsView = NsDOM.createTextNode(node.textContent);
-      //   nsView.nodeName = '#text';
-      //   break;
+      case NodeTypes.TEXT:
+        if (node.textContent.trim() !== '') {
+          fabricVNode = new VNode('#text', false);
+          break; 
+        }
     }
-    if (konvaNode === null) {
+    if (fabricVNode === null) {
       continue;
     } else {
-      results.push(konvaNode);
+      // results.push(konvaNode);
+      vnodes.push(fabricVNode);
     }
     if (parent !== null) {
-      FabricDOM.appendChild(konvaNode, parent);
+      parent.appendChild(fabricVNode);
+      // FabricDOM.appendChild(konvaNode, parent);
       // parent.addChild(pixiElement);
     }
     if (node.childNodes.length > 0) {
       // if (nsView instanceof PIXI.Container) {
-      nodeToFabricVNodes(node.childNodes, konvaNode, targets);
+      nodeToFabricVNodes(node.childNodes, fabricVNode, targets);
       // } else {
       //   throw new Error(
       //     `Invalid object model. ${node.nodeName.toLowerCase()} is not an instance of PIXI.Container. Cannot have childnodes`
@@ -466,7 +491,8 @@ function nodeToFabricVNodes(nodes: Node[] | ArrayLike<Node>, parent: IFabricNode
       // }
     }
   }
-  return results;
+  // return results;
+  return vnodes;
 }
 /*@internal*/
 // export class AuMarker extends View implements ILibUiNode {

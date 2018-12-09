@@ -3,7 +3,8 @@ import { IConnectableBinding } from './binding/connectable';
 import { ITargetedInstruction, TemplateDefinition, TemplatePartDefinitions } from './definitions';
 import { IEncapsulationSource, INode, INodeSequence, IRenderLocation } from './dom';
 import { IChangeTracker, IScope, LifecycleFlags } from './observation';
-import { IFabricNode, IKonvaRenderLocation, IFabricNodeSequence } from './fabric-dom';
+import { IFabricNode, IFabricRenderLocation, IFabricNodeSequence } from './fabric-dom';
+import { IFabricVNode } from './fabric-vnode';
 
 export const enum State {
   none                  = 0b000000000000,
@@ -90,16 +91,16 @@ export const IRenderable = DI.createInterface<IRenderable>().noDefault();
 
 export interface IRenderContext extends IServiceLocator {
   createChild(): IRenderContext;
-  render(renderable: IRenderable, targets: ArrayLike<IKonvaNode>, templateDefinition: TemplateDefinition, host?: IKonvaNode, parts?: TemplatePartDefinitions): void;
-  beginComponentOperation(renderable: IRenderable, target: IKonvaNode, instruction: Immutable<ITargetedInstruction>, factory?: IViewFactory, parts?: TemplatePartDefinitions, location?: IKonvaRenderLocation, locationIsContainer?: boolean): IDisposable;
+  render(renderable: IRenderable, targets: ArrayLike<IFabricVNode>, templateDefinition: TemplateDefinition, host?: IFabricVNode, parts?: TemplatePartDefinitions): void;
+  beginComponentOperation(renderable: IRenderable, target: IFabricVNode, instruction: Immutable<ITargetedInstruction>, factory?: IViewFactory, parts?: TemplatePartDefinitions, location?: IFabricRenderLocation, locationIsContainer?: boolean): IDisposable;
 }
 
 export interface IView extends IBindScope, IRenderable, IAttach, IMountable {
   readonly cache: IViewCache;
   readonly isFree: boolean;
-  readonly location: IKonvaRenderLocation;
+  readonly location: IFabricRenderLocation;
 
-  hold(location: IKonvaRenderLocation, flags: LifecycleFlags): void;
+  hold(location: IFabricRenderLocation, flags: LifecycleFlags): void;
   release(flags: LifecycleFlags): boolean;
 
   lockScope(scope: IScope): void;

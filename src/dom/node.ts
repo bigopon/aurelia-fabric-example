@@ -12,13 +12,16 @@ export class VNode<T = any> extends EventTarget {
   parentNode: VNode<T> | null;
   childNodes: VNode[];
   attributes: Record<string, any>;
+  isTarget: boolean;
+  text: string;
 
-  constructor(name: string) {
+  constructor(name: string, isTarget: boolean = false) {
     super();
     this.nodeName = name;
     this.parentNode = null;
     this.childNodes = emptyNodesArray;
     this.attributes = emptyObject;
+    this.isTarget = isTarget;
   }
 
   invokeNativeObject(): T {
@@ -83,6 +86,41 @@ export class VNode<T = any> extends EventTarget {
     return node;
   }
 
+  replaceChild(node: VNode<T>, refNode: VNode<T>): VNode<T> {
+    let childNodes = this.childNodes;
+    let idx = childNodes.indexOf(refNode);
+    if (idx !== -1) {
+      childNodes.splice(idx, 1, node);
+    } else {
+      throw new Error('Referenced node is not a child node');
+    }
+    return node;
+  }
+
+  replaceWith(node: VNode<T>): VNode<T> {
+    if (!this.parentNode) {
+      throw new Error('This node is not attached to any parent');
+    }
+    this.parentNode.replaceChild(node, this);
+    return node;
+  }
+
+  get firstChild(): VNode<T> | null {
+    let childNodes = this.childNodes;
+    if (childNodes.length > 0) {
+      return childNodes[0];
+    }
+    return null;
+  }
+
+  get lastChild(): VNode<T> | null {
+    let childNodes = this.childNodes;
+    if (childNodes.length > 0) {
+      return childNodes[childNodes.length - 1];
+    }
+    return null;
+  }
+
   get nextSibling(): VNode<T> | null {
     let parent = this.parentNode;
     if (parent !== null) {
@@ -105,5 +143,23 @@ export class VNode<T = any> extends EventTarget {
       }
     }
     return null;
+  }
+
+  cloneNode(deep?: boolean) {
+    let node = new VNode(this.nodeName, this.isTarget);
+    if (deep) {
+      let childNodes = this.childNodes;
+      for (let i = 0, ii = childNodes.length; ii > i; ++i) {
+        node.appendChild(childNodes[i].cloneNode(deep));
+      }
+    }
+    return node;
+  }
+
+  remove() {
+    let parent = this.parentNode;
+    if (parent !== null) {
+      parent.removeChild(this);
+    }
   }
 }

@@ -5,7 +5,7 @@ import { IView, IViewFactory, State } from '../../lifecycle';
 import { LifecycleFlags } from '../../observation';
 import { bindable } from '../bindable';
 import { ICustomAttribute, templateController } from '../custom-attribute';
-import { IKonvaRenderLocation } from '../../fabric-dom';
+import { IFabricRenderLocation } from '../../fabric-dom';
 
 export interface With extends ICustomAttribute {}
 @templateController('with')
@@ -17,7 +17,7 @@ export class With {
 
   private currentView: IView = null;
 
-  constructor(private factory: IViewFactory, location: IKonvaRenderLocation) {
+  constructor(private factory: IViewFactory, location: IFabricRenderLocation) {
     this.currentView = this.factory.create();
     this.currentView.hold(location, LifecycleFlags.fromCreate);
   }

@@ -15,7 +15,8 @@ import { IAttach, IAttachables, IBindables, IBindScope, IRenderable, IRenderCont
 import { ICustomAttribute } from './templating/custom-attribute';
 import { ICustomElement } from './templating/custom-element';
 import { IInstructionRenderer, instructionRenderer, IRenderer, IRenderingEngine } from './templating/lifecycle-render';
-import { IFabricNode, IKonvaRenderLocation, FabricDOM } from './fabric-dom';
+import { IFabricNode, IFabricRenderLocation, FabricDOM } from './fabric-dom';
+import { IFabricVNode } from './fabric-vnode';
 
 export function ensureExpression<TFrom>(parser: IExpressionParser, srcOrExpr: TFrom, bindingType: BindingType): Exclude<TFrom, string> {
   if (typeof srcOrExpr === 'string') {
@@ -147,7 +148,7 @@ export class ListenerBindingRenderer implements IInstructionRenderer {
     this.eventManager = eventManager;
   }
 
-  public render(context: IRenderContext, renderable: IRenderable, target: IKonvaNode, instruction: IListenerBindingInstruction): void {
+  public render(context: IRenderContext, renderable: IRenderable, target: IFabricVNode, instruction: IListenerBindingInstruction): void {
     const expr = ensureExpression(this.parser, instruction.from, BindingType.IsEventCommand | (instruction.strategy + BindingType.DelegationStrategyDelta));
     const bindable = new Listener(instruction.to, instruction.strategy, expr, target, instruction.preventDefault, this.eventManager, context);
     addBindable(renderable, bindable);
@@ -235,8 +236,8 @@ export class CustomElementRenderer implements IInstructionRenderer {
     this.renderingEngine = renderingEngine;
   }
 
-  public render(context: IRenderContext, renderable: IRenderable, target: IKonvaNode, instruction: IHydrateElementInstruction): void {
-    const operation = context.beginComponentOperation(renderable, target, instruction, null, null, target as IKonvaRenderLocation, true);
+  public render(context: IRenderContext, renderable: IRenderable, target: IFabricVNode, instruction: IHydrateElementInstruction): void {
+    const operation = context.beginComponentOperation(renderable, target, instruction, null, null, target as IFabricRenderLocation, true);
     const component = context.get<ICustomElement>(customElementKey(instruction.res));
     const instructionRenderers = context.get(IRenderer).instructionRenderers;
     const childInstructions = instruction.instructions;
@@ -265,7 +266,7 @@ export class CustomAttributeRenderer implements IInstructionRenderer {
     this.renderingEngine = renderingEngine;
   }
 
-  public render(context: IRenderContext, renderable: IRenderable, target: IKonvaNode, instruction: IHydrateAttributeInstruction): void {
+  public render(context: IRenderContext, renderable: IRenderable, target: IFabricVNode, instruction: IHydrateAttributeInstruction): void {
     const operation = context.beginComponentOperation(renderable, target, instruction);
     const component = context.get<ICustomAttribute>(customAttributeKey(instruction.res));
     const instructionRenderers = context.get(IRenderer).instructionRenderers;
@@ -295,7 +296,7 @@ export class TemplateControllerRenderer implements IInstructionRenderer {
     this.renderingEngine = renderingEngine;
   }
 
-  public render(context: IRenderContext, renderable: IRenderable, target: IKonvaNode, instruction: IHydrateTemplateController, parts?: TemplatePartDefinitions): void {
+  public render(context: IRenderContext, renderable: IRenderable, target: IFabricVNode, instruction: IHydrateTemplateController, parts?: TemplatePartDefinitions): void {
     const factory = this.renderingEngine.getViewFactory(instruction.def, context);
     const operation = context.beginComponentOperation(renderable, target, instruction, factory, parts, FabricDOM.convertToRenderLocation(target), false);
     const component = context.get<ICustomAttribute>(customAttributeKey(instruction.res));

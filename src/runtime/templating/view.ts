@@ -5,7 +5,7 @@ import { IScope, LifecycleFlags } from '../observation';
 import { $attachView, $cacheView, $detachView, $mountView, $unmountView } from './lifecycle-attach';
 import { $bindView, $unbindView } from './lifecycle-bind';
 import { ITemplate } from './lifecycle-render';
-import { IFabricNodeSequence, IKonvaRenderLocation } from '../fabric-dom';
+import { IFabricNodeSequence, IFabricRenderLocation } from '../fabric-dom';
 
 /*@internal*/
 export interface View extends IView {}
@@ -35,14 +35,14 @@ export class View implements IView {
   public $scope: IScope = null;
   public $nodes: IFabricNodeSequence;
   public $context: IRenderContext;
-  public location: IKonvaRenderLocation;
+  public location: IFabricRenderLocation;
   public isFree: boolean = false;
 
   constructor(
     public readonly $lifecycle: ILifecycle,
     public cache: IViewCache) {}
 
-  public hold(location: IKonvaRenderLocation, flags: LifecycleFlags): void {
+  public hold(location: IFabricRenderLocation, flags: LifecycleFlags): void {
     // if (!location.parentNode) { // unmet invariant: location must be a child of some other node
     //   throw Reporter.error(60); // TODO: organize error codes
     // }
