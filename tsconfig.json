@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "emitDecoratorMetadata": false,
+    "experimentalDecorators": true,
+    "sourceMap": true,
+    "lib": ["esnext", "dom"],
+    "module": "es2015",
+    "moduleResolution": "node",
+    "baseUrl": "src",
+    "target": "es2018",
+    "types": [
+      "fabric"
+    ]
+  },
+  "include": ["src"]
+}
