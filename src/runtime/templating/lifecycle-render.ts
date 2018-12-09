@@ -10,7 +10,7 @@ import { IResourceDescriptions, RuntimeCompilationResources } from '../resource'
 import { ICustomAttribute, ICustomAttributeType } from './custom-attribute';
 import { ICustomElement, ICustomElementType } from './custom-element';
 import { ViewFactory } from './view';
-import { IFabricNode, IFabricRenderLocation, IFabricNodeSequence, IFabricNodeSequenceFactory, FabricNodeSequenceFactory, BlessedNodeSequence } from '../fabric-dom';
+import { IFabricNode, IFabricRenderLocation, IFabricNodeSequence, IFabricNodeSequenceFactory, FabricNodeSequenceFactory, FabricNodeSequence } from '../fabric-dom';
 import { IFabricVNode } from 'runtime/fabric-vnode';
 
 
@@ -460,7 +460,7 @@ export class CompiledTemplate implements ITemplate {
 export const noViewTemplate: ITemplate = {
   renderContext: null,
   render(renderable: IRenderable): void {
-    (<Writable<IRenderable>>renderable).$nodes = BlessedNodeSequence.empty;
+    (<Writable<IRenderable>>renderable).$nodes = FabricNodeSequence.empty;
     (<Writable<IRenderable>>renderable).$context = null;
   }
 };
@@ -482,7 +482,7 @@ export function createRenderContext(renderingEngine: IRenderingEngine, parentRen
   context.registerResolver(IViewFactory, factoryProvider);
   context.registerResolver(IRenderable, renderableProvider);
   context.registerResolver(ITargetedInstruction, instructionProvider);
-  context.registerResolver(IKonvaRenderLocation as any, renderLocationProvider);
+  context.registerResolver(IFabricRenderLocation, renderLocationProvider);
 
   if (dependencies) {
     context.register(...dependencies);

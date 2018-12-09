@@ -5,12 +5,13 @@ import { CustomElementResource, ICustomElement, ICustomElementType } from './tem
 import { IRenderingEngine } from './templating/lifecycle-render';
 import { IFabricNode } from './fabric-dom';
 import { ILifecycle } from './lifecycle';
-import * as konva from 'konva';
+import { VNode } from 'dom/node';
 
 export interface ISinglePageApp {
-  // host: INode;
+  host?: INode;
   component: unknown;
-  stage: konva.StageConfig
+  canvas?: fabric.StaticCanvas;
+  fabric?: fabric.IStaticCanvasOptions | fabric.ICanvasOptions;
 }
 
 export class Aurelia {
@@ -40,8 +41,9 @@ export class Aurelia {
   }
 
   public app(config: ISinglePageApp): this {
-    const host = this.createStage(config) as konva.Stage & { $au: Aurelia };
-    // const host = config.host as INode & {$au?: Aurelia | null};
+    const canvas = this.createCanvas(config) as fabric.StaticCanvas & { $au: Aurelia };
+    const hostNode = new VNode('canvas', false);
+    hostNode.nativeObject = canvas;
     let component: ICustomElement;
     const componentOrType = config.component as ICustomElement | ICustomElementType;
     if (CustomElementResource.isType(<ICustomElementType>componentOrType)) {
@@ -52,17 +54,16 @@ export class Aurelia {
     }
 
     const startTask = () => {
-      host.$au = this;
+      canvas.$au = this;
       if (!this.components.includes(component)) {
         this._root = component;
         this.components.push(component);
         const re = this.container.get(IRenderingEngine);
-        component.$hydrate(re, host);
+        component.$hydrate(re, hostNode);
       }
 
       component.$bind(LifecycleFlags.fromStartTask | LifecycleFlags.fromBind);
-      component.$attach(LifecycleFlags.fromStartTask, host);
-      host.draw();
+      component.$attach(LifecycleFlags.fromStartTask, hostNode);
     };
 
     this.startTasks.push(startTask);
@@ -70,7 +71,7 @@ export class Aurelia {
     this.stopTasks.push(() => {
       component.$detach(LifecycleFlags.fromStopTask);
       component.$unbind(LifecycleFlags.fromStopTask | LifecycleFlags.fromUnbind);
-      host.$au = null;
+      canvas.$au = null;
     });
 
     if (this.isStarted) {
@@ -100,8 +101,11 @@ export class Aurelia {
     return this;
   }
 
-  public createStage(config: ISinglePageApp): konva.Stage {
-    return new konva.Stage(config.stage);
+  public createCanvas(config: ISinglePageApp): fabric.StaticCanvas {
+    if (config.canvas) {
+      return config.canvas;
+    }
+    return new fabric.Canvas(config.host as HTMLCanvasElement, config.fabric);
   }
 }
 

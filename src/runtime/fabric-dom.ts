@@ -1,6 +1,6 @@
 /// <reference path="./fabric-types.d.ts" />
 import { PLATFORM, DI, Constructable, Writable, IContainer, IResolver } from '../kernel';
-import { document, INode } from './dom';
+import { INode } from './dom';
 import { IFabricVNode } from './fabric-vnode';
 import { VNode } from 'dom/node';
 
@@ -79,9 +79,9 @@ export const FabricDOM = new class {
       console.log(Object.keys(FabricDomMap));
       throw new Error('There is no element with ' + tagName + ' registered');
     }
-    let blessedNode: IFabricNode = FabricDomMap[tagName](node);
-    blessedNode.nodeName = tagName;
-    return blessedNode;
+    let fabricNode: IFabricNode = FabricDomMap[tagName](node);
+    fabricNode.nodeName = tagName;
+    return fabricNode;
   }
   remove<T extends IFabricNode = IFabricNode>(childView: T, parentView?: IFabricNode): T | null {
     // // if (node.parent) {
@@ -182,24 +182,24 @@ export interface IFabricRenderLocation extends IFabricVNode {
 * Represents a DocumentFragment
 */
 export interface IFabricNodeSequence {
-  firstChild: IFabricNode;
-  lastChild: IFabricNode;
+  firstChild: IFabricVNode;
+  lastChild: IFabricVNode;
   /**
    * The nodes of this sequence.
    */
-  children: ReadonlyArray<IFabricNode>;
+  children: ReadonlyArray<IFabricVNode>;
   /**
   * Find all instruction targets in this sequence.
   */
-  findTargets(): ReadonlyArray<IFabricNode>;
+  findTargets(): ReadonlyArray<IFabricVNode>;
   /**
   * Insert this sequence as a sibling before refNode
   */
-  insertBefore(refNode: IFabricNode): void;
+  insertBefore(refNode: IFabricVNode): void;
   /**
   * Append this sequence as a child to parent
   */
-  appendTo(parent: IFabricNode): void;
+  appendTo(parent: IFabricVNode): void;
   /**
   * Remove this sequence from its parent.
   */
@@ -213,11 +213,11 @@ const emptySequence: IFabricNodeSequence = {
   lastChild: null,
   children: PLATFORM.emptyArray,
   findTargets(): ReturnType<IFabricNodeSequence['findTargets']> { return PLATFORM.emptyArray; },
-  insertBefore(refNode: IFabricNode): ReturnType<IFabricNodeSequence['insertBefore']> { /*do nothing*/ },
-  appendTo(parent: IFabricNode): ReturnType<IFabricNodeSequence['appendTo']> { /*do nothing*/ },
+  insertBefore(refNode: IFabricVNode): ReturnType<IFabricNodeSequence['insertBefore']> { /*do nothing*/ },
+  appendTo(parent: IFabricVNode): ReturnType<IFabricNodeSequence['appendTo']> { /*do nothing*/ },
   remove(): ReturnType<IFabricNodeSequence['remove']> { /*do nothing*/ }
 };
-export const BlessedNodeSequence = {
+export const FabricNodeSequence = {
   empty: emptySequence
 };
 /**
@@ -227,25 +227,25 @@ export const BlessedNodeSequence = {
 * - text is the actual text node
 */
 export class FabricTextNodeSequence implements IFabricNodeSequence {
-  public firstChild: IFabricNode;
-  public lastChild: IFabricNode;
-  public children: IFabricNode[];
-  private targets: ReadonlyArray<IFabricNode>;
-  constructor(text: IFabricNode) {
+  public firstChild: IFabricVNode;
+  public lastChild: IFabricVNode;
+  public children: IFabricVNode[];
+  private targets: ReadonlyArray<IFabricVNode>;
+  constructor(text: IFabricVNode) {
     this.firstChild = text;
     this.lastChild = text;
     this.children = [text];
     this.targets = [];
     // this.targets = [new AuMarker(text)];
   }
-  public findTargets(): ReadonlyArray<IFabricNode> {
+  public findTargets(): ReadonlyArray<IFabricVNode> {
     return this.targets;
   }
-  public insertBefore(refNode: IFabricNode): void {
+  public insertBefore(refNode: IFabricVNode): void {
     FabricDOM.insertBefore(this.firstChild, refNode);
     // refNode.parent.insertBefore(this.firstChild, refNode);
   }
-  public appendTo(parent: IFabricNode): void {
+  public appendTo(parent: IFabricVNode): void {
     // parent.addChild(this.firstChild);
     FabricDOM
   }
@@ -261,11 +261,11 @@ export class FabricTextNodeSequence implements IFabricNodeSequence {
 // CompiledTemplates create instances of FragmentNodeSequence.
 /*@internal*/
 export class FabricFragmentNodeSequence implements IFabricNodeSequence {
-  public firstChild: IFabricNode;
-  public lastChild: IFabricNode;
-  public children: ReadonlyArray<IFabricNode>;
+  public firstChild: IFabricVNode;
+  public lastChild: IFabricVNode;
+  public children: ReadonlyArray<IFabricVNode>;
   private fragment: DocumentFragment;
-  private targets: ReadonlyArray<IFabricNode>;
+  private targets: ReadonlyArray<IFabricVNode>;
   private start: IFabricRenderLocation;
   private end: IFabricRenderLocation;
   private vNodes: IFabricVNode[];
@@ -305,7 +305,7 @@ export class FabricFragmentNodeSequence implements IFabricNodeSequence {
     this.start = this.end = null;
   }
 
-  public findTargets(): ReadonlyArray<IFabricNode> {
+  public findTargets(): ReadonlyArray<IFabricVNode> {
     // if (!this.targets)
     // tslint:disable-next-line:no-any
     return this.targets;
@@ -401,7 +401,7 @@ export class FabricNodeSequenceFactory {
     const childNodes = fragment.childNodes;
     switch (childNodes.length) {
       case 0:
-        this.createNodeSequence = () => BlessedNodeSequence.empty;
+        this.createNodeSequence = () => FabricNodeSequence.empty;
         return;
       case 2:
         const target = childNodes[0];
@@ -430,17 +430,18 @@ export class FabricNodeSequenceFactory {
     return new this.Type(this.node);
   }
 }
+
 const enum NodeTypes {
   ELEMENT = 1,
   TEXT = 3,
 }
+
 function nodeToFabricVNodes(nodes: Node[] | ArrayLike<Node>, parent: IFabricVNode | null, targets: IFabricVNode[]): IFabricVNode[] {
   // const results: IFabricNode[] = [];
   const vnodes: IFabricVNode[] = [];
   for (let i = 0, ii = nodes.length; ii > i; ++i) {
     const node = nodes[i];
     let fabricVNode: IFabricVNode | null = null;
-    // let konvaNode: IFabricNode | null = null;
     if (!node.nodeType) {
       throw new Error('No node type????');
     }
@@ -457,12 +458,6 @@ function nodeToFabricVNodes(nodes: Node[] | ArrayLike<Node>, parent: IFabricVNod
         if (isTarget) {
           targets.push(fabricVNode);
         }
-        // konvaNode = FabricDOM.createElement(nodeName, node as Element);
-        // // konvaNode.nodeType = NodeTypes.ELEMENT;
-        // konvaNode.nodeName = nodeName;
-        // if ((node as Element).classList.contains('au')) {
-        //   targets.push(konvaNode);
-        // }
         break;
       case NodeTypes.TEXT:
         if (node.textContent.trim() !== '') {
@@ -473,13 +468,10 @@ function nodeToFabricVNodes(nodes: Node[] | ArrayLike<Node>, parent: IFabricVNod
     if (fabricVNode === null) {
       continue;
     } else {
-      // results.push(konvaNode);
       vnodes.push(fabricVNode);
     }
     if (parent !== null) {
       parent.appendChild(fabricVNode);
-      // FabricDOM.appendChild(konvaNode, parent);
-      // parent.addChild(pixiElement);
     }
     if (node.childNodes.length > 0) {
       // if (nsView instanceof PIXI.Container) {

@@ -15,7 +15,6 @@
     "html-loader": "latest",
     "html-webpack-plugin": "latest",
     "http-server": "latest",
-    "konva": "^2.5.1",
     "rimraf": "^2.6.2",
     "ts-loader": "latest",
     "ts-node": "^7.0.1",
