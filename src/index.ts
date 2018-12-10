@@ -14,11 +14,9 @@ import { customElement } from './runtime';
   name: 'app',
   template: 
 	`<template>
-		<layer>
-			<rect draggable x.two-way="rectX" y.two-way="rectY" width="100" height="100" fill="grey"></rect>
-			<rect x.bind="rectX + 150" y.bind="rectY + 100" width="50" height="50" fill="red"></rect>
-			<rect x.bind="-rectX + 750" y.bind="-rectY + 550" width="50" height="50" fill="green"></rect>
-		</layer>
+		<canvas>
+			<rect></rect>
+		</canvas>
   </template>`
 })
 export class App {
@@ -45,10 +43,6 @@ window['au'] = new Aurelia()
 	)
 	.app({
 		component: App,
-		stage: {
-			container: ct,
-			width: 800,
-			height: 600
-		}
+		host: ct
 	})
 	.start();

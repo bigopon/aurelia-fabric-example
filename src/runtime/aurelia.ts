@@ -41,9 +41,11 @@ export class Aurelia {
   }
 
   public app(config: ISinglePageApp): this {
-    const canvas = this.createCanvas(config) as fabric.StaticCanvas & { $au: Aurelia };
-    const hostNode = new VNode('canvas', false);
-    hostNode.nativeObject = canvas;
+    const host = this.createContainer(config) as HTMLElement & { $au: Aurelia };
+
+    const hostVNode = new VNode('$root', false);
+    hostVNode.nativeObject = host;
+
     let component: ICustomElement;
     const componentOrType = config.component as ICustomElement | ICustomElementType;
     if (CustomElementResource.isType(<ICustomElementType>componentOrType)) {
@@ -54,16 +56,16 @@ export class Aurelia {
     }
 
     const startTask = () => {
-      canvas.$au = this;
+      host.$au = this;
       if (!this.components.includes(component)) {
         this._root = component;
         this.components.push(component);
         const re = this.container.get(IRenderingEngine);
-        component.$hydrate(re, hostNode);
+        component.$hydrate(re, hostVNode);
       }
 
       component.$bind(LifecycleFlags.fromStartTask | LifecycleFlags.fromBind);
-      component.$attach(LifecycleFlags.fromStartTask, hostNode);
+      component.$attach(LifecycleFlags.fromStartTask, hostVNode);
     };
 
     this.startTasks.push(startTask);
@@ -71,7 +73,7 @@ export class Aurelia {
     this.stopTasks.push(() => {
       component.$detach(LifecycleFlags.fromStopTask);
       component.$unbind(LifecycleFlags.fromStopTask | LifecycleFlags.fromUnbind);
-      canvas.$au = null;
+      host.$au = null;
     });
 
     if (this.isStarted) {
@@ -101,11 +103,11 @@ export class Aurelia {
     return this;
   }
 
-  public createCanvas(config: ISinglePageApp): fabric.StaticCanvas {
-    if (config.canvas) {
-      return config.canvas;
+  public createContainer(config: ISinglePageApp): HTMLElement {
+    if (config.host) {
+      return config.host as HTMLElement;
     }
-    return new fabric.Canvas(config.host as HTMLCanvasElement, config.fabric);
+    return document.createElement('div');
   }
 }
 

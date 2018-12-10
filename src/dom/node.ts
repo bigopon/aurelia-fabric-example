@@ -4,7 +4,9 @@ const emptyNodesArray = Object.freeze([]) as VNode[];
 const emptyObject = Object.freeze({}) as Record<string, any>;
 export class VNode<T = any> extends EventTarget {
 
-  static invokeNativeObject: <TType = any>(node: VNode<TType>, ...args: any[]) => void;
+  static invokeNativeObject: (node: VNode<any>, ...args: any[]) => void;
+
+  static appendChild: (node: VNode<any>, parentNode: VNode<any>) => void;
 
   nativeObject: T;
   nodeName: string;

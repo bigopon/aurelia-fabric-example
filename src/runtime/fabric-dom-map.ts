@@ -1,7 +1,7 @@
 // import { CSSStyleDeclaration, Node, Element, HTMLElement } from '../basichtml';
 import { FabricDOM } from './fabric-dom';
-import * as konva from 'konva';
-import { PLATFORM } from 'kernel';
+import { PLATFORM } from '../kernel';
+import { VNode } from '../dom/node';
 
 (map => {
   const emptyOps = {};
@@ -71,52 +71,50 @@ import { PLATFORM } from 'kernel';
   //   return opts;
   // }
   const camelCase = PLATFORM.camelCase;
-  map('TEXT', (node?: Element) => {
-    const text = new konva.Text({ text: node.getAttribute('text') || '' });
-    if (node.hasAttribute('draggable')) {
-      text.draggable(true);
+  // map('')?
+  VNode.invokeNativeObject = (node: VNode<fabric.Object | fabric.StaticCanvas>, ...args: any[]) => {
+    const nodeName = node.nodeName;
+    switch (nodeName) {
+      case 'canvas':
+        let canvas: HTMLCanvasElement;
+        if (node.hasAttribute('canvas')) {
+          let canvasId =  node.getAttribute('canvas');
+          canvas = document.getElementById(canvasId) as HTMLCanvasElement;
+          if (canvas === null) {
+            throw new Error('Invalid canvas ID. Canvas not found');
+          }
+        } else {
+          canvas = document.createElement('canvas');
+        }
+        node.nativeObject = new fabric.Canvas(canvas, node.attributes);
+      case '':
     }
-    return text;
-  });
-  map('LAYER', (node?: Element) => {
-    const layer = new konva.Layer();
-    return layer;
-  });
-  map('RECT', (node?: Element) => {
-    const opts: konva.RectConfig = {};
-    ['x', 'y', 'width', 'height', 'stroke-width'].forEach(p => {
-      const value = Number(node.getAttribute(p));
-      if (!isNaN(value)) {
-        opts[camelCase(p)] = value;
-      }
-    });
-    ['fill', 'stroke'].forEach(p => {
-      if (node.hasAttribute(p)) {
-        opts[p] = node.getAttribute(p);
-        opts.fillEnabled = true;
-      }
-    });
-    opts.draggable = node.hasAttribute('draggable');
-    return new konva.Rect(opts);
-  });
-  map('IMAGE', (node?: Element) => {
-    const image = new Image();
-    const opts: konva.ImageConfig = {
-      image,
-    };
-    ['x', 'y', 'width', 'height'].forEach(p => {
-      const value = Number(node.getAttribute(p));
-      if (!isNaN(value)) {
-        opts[camelCase(p)] = value;
-      }
-    });
+  };
+  VNode.appendChild = (node: VNode<fabric.Object | fabric.StaticCanvas>, parentNode: VNode) => {
+    const nodeName = node.nodeName;
+    const nodeNativeObject = node.nativeObject;
+    const parentNodeName = parentNode.nodeName;
+    const parentNativeObject = parentNode.nativeObject;
     
-    const img = new konva.Image(opts);
-    const realImage = new Image();
-    realImage.onload = function() {
-      realImage.onload = null;
-      img.image(realImage);
-    };
-    return img;
-  });
+    if (parentNodeName === '$root') {
+      if (nodeName === 'canvas' || nodeName === 'static-canvas') {
+        (parentNativeObject as HTMLElement).appendChild((nodeNativeObject as fabric.StaticCanvas).getElement());
+      } else {
+        throw new Error(`Invalid root node child. Expected "canvas" or "static-canvas", received: "${nodeName}"`);
+      }
+      return;
+    }
+
+    if (!(nodeNativeObject instanceof fabric.Object)) {
+      throw new Error(`Invalid child node. Expected a fabric.Object instance. Received : "${nodeNativeObject.constructor.name}"`);
+    }
+
+    if (parentNodeName === 'canvas' || parentNodeName === 'static-canvas') {
+      (parentNativeObject as fabric.StaticCanvas).add(nodeNativeObject);
+      return;
+    }
+    if (parentNodeName === 'group') {
+      (parentNativeObject as fabric.Group).add(nodeNativeObject);
+    }
+  };
 })(FabricDOM.map);

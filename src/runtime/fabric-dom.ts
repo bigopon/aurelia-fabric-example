@@ -9,7 +9,7 @@ function isRenderLocation(node: IFabricVNode): node is IFabricRenderLocation {
   return node instanceof VNode && node.nodeName === '#comment' && node.text === 'au-end';
 }
 
-const FabricDomMap: Record<string, (node?: Element) => IFabricNode> = {};
+const FabricDomMap: Record<string, (node?: Element) => IFabricVNode> = {};
 export const FabricDOM = new class {
   registerElementResolver(container: IContainer, resolver: IResolver): void {
     container.registerResolver(IFabricNode, resolver);
@@ -73,13 +73,13 @@ export const FabricDOM = new class {
   // createElement(tagName: 'Text'): TextBase;
   // createElement(tagName: 'Button'): Button;
   // createElement(tagName: 'Frame'): Frame;
-  createElement(tagName: string, node?: Element): IFabricNode;
-  createElement(tagName: string, node?: Element): IFabricNode {
+  createElement(tagName: string, node?: Element): IFabricVNode;
+  createElement(tagName: string, node?: Element): IFabricVNode {
     if (!(tagName in FabricDomMap)) {
       console.log(Object.keys(FabricDomMap));
       throw new Error('There is no element with ' + tagName + ' registered');
     }
-    let fabricNode: IFabricNode = FabricDomMap[tagName](node);
+    let fabricNode: IFabricVNode = FabricDomMap[tagName](node);
     fabricNode.nodeName = tagName;
     return fabricNode;
   }
@@ -147,7 +147,7 @@ export const FabricDOM = new class {
   isNodeInstance(node: any): node is IFabricNode {
     return node instanceof fabric.Object;
   }
-  map(tagName: string, ctor: ((node?: Element) => IFabricNode)): void {
+  map(tagName: string, ctor: ((node?: Element) => IFabricVNode)): void {
     if (tagName in FabricDomMap) {
       throw new Error(`Element with the same name "${tagName}" already exists`);
     }
@@ -269,8 +269,18 @@ export class FabricFragmentNodeSequence implements IFabricNodeSequence {
   private start: IFabricRenderLocation;
   private end: IFabricRenderLocation;
   private vNodes: IFabricVNode[];
+  private inited: boolean;
   constructor(fragment: DocumentFragment) {
+    this.inited = false;
     this.fragment = fragment;
+  }
+
+  private init(): void {
+    if (this.inited) {
+      return;
+    }
+    this.inited = true;
+    let fragment = this.fragment;
     let targetNodeList: IFabricVNode[] = [];
     const vNodes = this.vNodes = nodeToFabricVNodes(fragment.childNodes, null, targetNodeList);
     let i = 0;
@@ -291,6 +301,7 @@ export class FabricFragmentNodeSequence implements IFabricNodeSequence {
       }
       ++i;
     }
+    vNodes.forEach(node => node.invokeNativeObject());
     // const childNodeList = fragment.childNodes;
     // i = 0;
     // ii = childNodeList.length;
@@ -300,18 +311,20 @@ export class FabricFragmentNodeSequence implements IFabricNodeSequence {
     //   ++i;
     // }
     const nodeCount = vNodes.length;
-    // this.firstChild = nodeCount > 0 ? vNodes[0] : null;
-    // this.lastChild = nodeCount > 0 ? vNodes[nodeCount - 1] : null;
+    this.firstChild = nodeCount > 0 ? vNodes[0] : null;
+    this.lastChild = nodeCount > 0 ? vNodes[nodeCount - 1] : null;
     this.start = this.end = null;
   }
 
   public findTargets(): ReadonlyArray<IFabricVNode> {
+    this.init();
     // if (!this.targets)
     // tslint:disable-next-line:no-any
     return this.targets;
   }
 
   public insertBefore(refNode: IFabricVNode): void {
+    this.init();
     // tslint:disable-next-line:no-any
     const children = this.vNodes;
     for (let i = 0, ii = children.length; ii > i; ++i) {
@@ -342,19 +355,23 @@ export class FabricFragmentNodeSequence implements IFabricNodeSequence {
   }
 
   public appendTo(parent: IFabricVNode): void {
+    this.init();
     // tslint:disable-next-line:no-any
     // (<any>parent).appendChild(this.fragment);
     // parent.addChild(...this.children);
     // if (this.children.length === 1 && this.children[0].typeName === 'Page') {
 
     // }
-    this.vNodes.forEach(c => parent.appendChild(c));
+    this.vNodes.forEach(c => VNode.appendChild(c, parent));
     // this can never be a RenderLocation, and if for whatever reason we moved
     // from a RenderLocation to a host, make sure "start" and "end" are null
     this.start = this.end = null;
   }
 
   public remove(): void {
+    if (!this.inited) {
+      return;
+    }
     // const fragment = this.fragment;
     // if (this.start !== null && this.start.$nodes === this) {
     //   // if we're between a valid "start" and "end" (e.g. if/else, containerless, or a
