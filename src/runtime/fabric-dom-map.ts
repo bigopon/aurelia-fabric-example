@@ -71,6 +71,17 @@ import { VNode } from '../dom/node';
   //   return opts;
   // }
   const camelCase = PLATFORM.camelCase;
+  const tryConvertToNumbers = (attributes: Record<string, string>): Record<string, number | string> => {
+    return Object
+      .keys(attributes)
+      .reduce((attrs, prop) => {
+        prop = camelCase(prop);
+        let value = attributes[prop];
+        let nVal = Number(value);
+        attrs[prop] = isNaN(nVal) ? value : nVal;
+        return attrs;
+      }, {});
+  }
   // map('')?
   VNode.invokeNativeObject = (node: VNode<fabric.Object | fabric.StaticCanvas>, ...args: any[]) => {
     const nodeName = node.nodeName;
@@ -86,8 +97,12 @@ import { VNode } from '../dom/node';
         } else {
           canvas = document.createElement('canvas');
         }
-        node.nativeObject = new fabric.Canvas(canvas, node.attributes);
-      case '':
+        node.nativeObject = new fabric.Canvas(canvas, tryConvertToNumbers(node.attributes));
+      case 'group':
+        // todo: convert node.attributes into appropriate group props
+        node.nativeObject = new fabric.Group([], {});
+      case 'rect':
+        node.nativeObject = new fabric.Rect(tryConvertToNumbers(node.attributes));
     }
   };
   VNode.appendChild = (node: VNode<fabric.Object | fabric.StaticCanvas>, parentNode: VNode) => {

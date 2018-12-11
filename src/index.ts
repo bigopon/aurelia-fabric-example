@@ -14,8 +14,8 @@ import { customElement } from './runtime';
   name: 'app',
   template: 
 	`<template>
-		<canvas>
-			<rect></rect>
+		<canvas width="800" height="600">
+			<rect stroke="red" fill="blue" width="50" height="40"></rect>
 		</canvas>
   </template>`
 })
