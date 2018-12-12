@@ -28,7 +28,6 @@ export class VNode<T = any> extends EventTarget {
 
   invokeNativeObject(): T {
     VNode.invokeNativeObject(this);
-    this.childNodes.forEach(VNode.invokeNativeObject);
     return this.nativeObject;
   }
 
@@ -55,7 +54,7 @@ export class VNode<T = any> extends EventTarget {
   appendChild(node: VNode<T>): VNode<T> {
     let childNodes = this.childNodes;
     if (childNodes === emptyNodesArray) {
-      childNodes = [];
+      childNodes = this.childNodes = [];
     }
     childNodes.push(node);
     node.parentNode = this;

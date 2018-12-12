@@ -10,37 +10,40 @@ import { IObserverLocator } from './observer-locator';
 import { SetterObserver } from './property-observation';
 import { targetObserver } from './target-observer';
 import { IFabricNode } from '../fabric-dom';
+import { IFabricVNode } from 'runtime/fabric-vnode';
 
 const handleEventFlags = LifecycleFlags.fromDOMEvent | LifecycleFlags.updateSourceExpression;
 
-export interface KonvaPropertyObserver extends
-  IBindingTargetObserver<IKonvaNode, string, Primitive | IIndexable> { }
+export interface FabricPropertyObserver extends
+  IBindingTargetObserver<IFabricVNode, string, Primitive | IIndexable> { }
 
 @targetObserver('')
-export class KonvaPropertyObserver implements KonvaPropertyObserver {
+export class FabricPropertyObserver implements FabricPropertyObserver {
   public currentValue: Primitive | IIndexable;
   public currentFlags: LifecycleFlags;
   public oldValue: Primitive | IIndexable;
   public defaultValue: Primitive | IIndexable;
 
   public flush: () => void;
+  private targetEvent: string;
 
   constructor(
     public lifecycle: ILifecycle,
-    public obj: IKonvaNode,
+    public obj: IFabricVNode,
     public propertyName: string
   ) {
-    this.oldValue = this.currentValue = obj[propertyName]();
+    this.oldValue = this.currentValue = obj.nativeObject[propertyName];
+    this.targetEvent = this.getEventFor(propertyName);
     this.handleEvent = this.handleEvent.bind(this);
   }
 
   public getValue(): Primitive | IIndexable {
-    return this.obj[this.propertyName]();
+    return this.obj.nativeObject[this.propertyName];
   }
 
   public setValueCore(newValue: Primitive | IIndexable, flags: LifecycleFlags): void {
     // this.obj.setValue(newValue as any);
-    this.obj[this.propertyName](newValue);
+    this.obj.nativeObject[this.propertyName] = newValue;
     if (flags & LifecycleFlags.fromBind) {
       return;
     }
@@ -59,14 +62,22 @@ export class KonvaPropertyObserver implements KonvaPropertyObserver {
   public subscribe(subscriber: IPropertySubscriber): void {
     if (!this.hasSubscribers()) {
       this.oldValue = this.getValue();
-      this.obj.on(`${this.propertyName}Change`, this.handleEvent);
+      this.obj.nativeObject.on(this.targetEvent, this.handleEvent);
     }
     this.addSubscriber(subscriber);
   }
 
   public unsubscribe(subscriber: IPropertySubscriber): void {
     if (this.removeSubscriber(subscriber) && !this.hasSubscribers()) {
-      this.obj.off(`${this.propertyName}Change`);
+      this.obj.nativeObject.off(this.targetEvent, this.handleEvent);
+    }
+  }
+
+  private getEventFor(propertyName: string) {
+    switch (propertyName) {
+      case 'x': case 'y': case 'top': case 'left': return 'moving';
+      case 'width': case 'height': return 'scaling';
+      default: return 'modified';
     }
   }
 }

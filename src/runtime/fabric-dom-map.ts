@@ -2,6 +2,7 @@
 import { FabricDOM } from './fabric-dom';
 import { PLATFORM } from '../kernel';
 import { VNode } from '../dom/node';
+import { IFabricVNode } from './fabric-vnode';
 
 (map => {
   const emptyOps = {};
@@ -98,11 +99,41 @@ import { VNode } from '../dom/node';
           canvas = document.createElement('canvas');
         }
         node.nativeObject = new fabric.Canvas(canvas, tryConvertToNumbers(node.attributes));
+        if (node.hasAttribute('background-color')) {
+          node.nativeObject.backgroundColor = node.getAttribute('background-color');
+        }
+        if (node.hasAttribute('x')) {
+          (node.nativeObject as fabric.Canvas)['lowerCanvasEl'].style.left = `${node.getAttribute('x')}px`;
+          (node.nativeObject as fabric.Canvas)['upperCanvasEl'].style.left = `${node.getAttribute('x')}px`;
+        }
+        if (node.hasAttribute('y')) {
+          (node.nativeObject as fabric.Canvas)['lowerCanvasEl'].style.top = `${node.getAttribute('y')}px`;
+          (node.nativeObject as fabric.Canvas)['upperCanvasEl'].style.top = `${node.getAttribute('y')}px`;
+        }
+        let i = 0;
+        let childVNodes = node.childNodes;
+        while (i < childVNodes.length) {
+          let childVNode = childVNodes[i];
+          childVNode.invokeNativeObject();
+          VNode.appendChild(childVNode, node);
+          i++;
+        }
+        break;
       case 'group':
         // todo: convert node.attributes into appropriate group props
         node.nativeObject = new fabric.Group([], {});
+        let $i = 0;
+        let $childVNodes = node.childNodes;
+        while ($i < $childVNodes.length) {
+          let $childVNode = childVNodes[i];
+          $childVNode.invokeNativeObject();
+          VNode.appendChild($childVNode, node);
+          i++;
+        }
+        break;
       case 'rect':
         node.nativeObject = new fabric.Rect(tryConvertToNumbers(node.attributes));
+        break;
     }
   };
   VNode.appendChild = (node: VNode<fabric.Object | fabric.StaticCanvas>, parentNode: VNode) => {
@@ -114,6 +145,9 @@ import { VNode } from '../dom/node';
     if (parentNodeName === '$root') {
       if (nodeName === 'canvas' || nodeName === 'static-canvas') {
         (parentNativeObject as HTMLElement).appendChild((nodeNativeObject as fabric.StaticCanvas).getElement());
+        if (nodeName === 'canvas') {
+          (parentNativeObject as HTMLElement).appendChild((nodeNativeObject as fabric.Canvas)['upperCanvasEl']);
+        }
       } else {
         throw new Error(`Invalid root node child. Expected "canvas" or "static-canvas", received: "${nodeName}"`);
       }

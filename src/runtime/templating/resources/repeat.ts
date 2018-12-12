@@ -10,10 +10,11 @@ import { CollectionObserver, IBatchedCollectionSubscriber, IObservedArray, IScop
 import { bindable } from '../bindable';
 import { ICustomAttribute, templateController } from '../custom-attribute';
 import { IFabricRenderLocation, IFabricNode } from '../../fabric-dom';
+import { IFabricVNode } from 'runtime/fabric-vnode';
 
 export interface Repeat<T extends ObservedCollection> extends ICustomAttribute, IBatchedCollectionSubscriber {}
 
-@inject(IKonvaRenderLocation, IRenderable, IViewFactory)
+@inject(IFabricRenderLocation, IRenderable, IViewFactory)
 @templateController('repeat')
 export class Repeat<T extends ObservedCollection = IObservedArray> {
   public static register: IRegistry['register'];
@@ -23,7 +24,7 @@ export class Repeat<T extends ObservedCollection = IObservedArray> {
   public $scope: IScope;
   public $observers: { items: SetterObserver };
 
-  public encapsulationSource: IKonvaNode = null;
+  public encapsulationSource: IFabricVNode = null;
   public views: IView[] = [];
   public observer: CollectionObserver = null;
   public hasPendingInstanceMutation: boolean = false;

@@ -8,7 +8,7 @@ import { IFabricRenderLocation } from '../../fabric-dom';
 
 export interface If extends ICustomAttribute {}
 @templateController('if')
-@inject(IViewFactory, IKonvaRenderLocation, CompositionCoordinator)
+@inject(IViewFactory, IFabricRenderLocation, CompositionCoordinator)
 export class If {
   public static register: IRegistry['register'];
 

@@ -7,7 +7,7 @@ import { IFabricRenderLocation } from '../../fabric-dom';
 
 export interface Replaceable extends ICustomAttribute {}
 @templateController('replaceable')
-@inject(IViewFactory, IKonvaRenderLocation)
+@inject(IViewFactory, IFabricRenderLocation)
 export class Replaceable {
   public static register: IRegistry['register'];
 

@@ -40,7 +40,7 @@ module.exports = function({ prod } = {}) {
         // Host that will be used in `server` mode to start HTTP server.
         analyzerHost: 'localhost',
         // Port that will be used in `server` mode to start HTTP server.
-        analyzerPort: 8888,
+        analyzerPort: 8889,
         // Path to bundle report file that will be generated in `static` mode.
         // Relative to bundles output directory.
         reportFilename: 'bundle_report.html',

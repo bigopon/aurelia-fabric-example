@@ -17,7 +17,9 @@ import { getSetObserver } from './set-observer';
 import { ISVGAnalyzer } from './svg-analyzer';
 import { ClassAttributeAccessor, DataAttributeAccessor, ElementPropertyAccessor, PropertyAccessor, StyleAttributeAccessor, XLinkAttributeAccessor } from './target-accessors';
 import { FabricDOM, IFabricNode } from '../fabric-dom';
-import { KonvaPropertyObserver } from './konva-observer';
+import { FabricPropertyObserver } from './fabric-observer';
+import { IFabricVNode } from 'runtime/fabric-vnode';
+import { VNode } from 'dom/node';
 
 const toStringTag = Object.prototype.toString;
 
@@ -90,8 +92,8 @@ export class ObserverLocator implements IObserverLocator {
   }
 
   public getAccessor(obj: IObservable, propertyName: string): IBindingTargetAccessor {
-    if (FabricDOM.isNodeInstance(obj)) {
-      return new KonvaPropertyAccessor(obj, propertyName);
+    if (obj instanceof VNode && FabricDOM.isNodeInstance(obj.nativeObject)) {
+      return new FabricPropertyAccessor(obj, propertyName);
     }
     if (DOM.isNodeInstance(obj)) {
       const tagName = obj['tagName'];
@@ -167,9 +169,17 @@ export class ObserverLocator implements IObserverLocator {
       return new PrimitiveObserver(obj as any, propertyName) as IBindingTargetAccessor;
     }
 
-    if (FabricDOM.isNodeInstance(obj)) {
-      if (propertyName === 'x' || propertyName === 'y' || propertyName === 'width' || propertyName === 'height') {
-        return new KonvaPropertyObserver(this.lifecycle, obj, propertyName);
+    if (obj instanceof VNode && FabricDOM.isNodeInstance(obj.nativeObject)) {
+      if (propertyName === 'x'
+        || propertyName === 'top'
+        || propertyName === 'y'
+        || propertyName === 'left'
+        || propertyName === 'width'
+        || propertyName === 'height'
+        || propertyName === 'rx'
+        || propertyName === 'ry'
+      ) {
+        return new FabricPropertyObserver(this.lifecycle, obj, propertyName);
       }
     }
 
@@ -270,16 +280,39 @@ export function getCollectionObserver(lifecycle: ILifecycle, collection: IObserv
 }
 
 
-interface KonvaPropertyAccessor extends IBindingTargetAccessor<IIndexable, string, Primitive | IIndexable> {}
-class KonvaPropertyAccessor implements PropertyAccessor {
-  constructor(public obj: IKonvaNode, public propertyKey: string) { }
+interface FabricPropertyAccessor extends IBindingTargetAccessor<IIndexable, string, Primitive | IIndexable> {}
+class FabricPropertyAccessor implements PropertyAccessor {
+  constructor(public obj: IFabricVNode, public propertyKey: string) {
+    const nativeObject = obj.nativeObject;
+    const type = nativeObject.type;
+    if (type === 'canvas' || type === 'canvas') {
+      if (propertyKey === 'width' || propertyKey === 'height') {
+        this.getValue = this[`getCanvas${propertyKey}`];
+      }
+    }
+  }
 
   public getValue(): Primitive | IIndexable {
-    return this.obj[this.propertyKey]();
+    return this.obj.nativeObject[this.propertyKey];
   }
 
   public setValue(value: Primitive | IIndexable): void {
-    this.obj[this.propertyKey](value);
-    this.obj.getLayer().draw();
+    this.obj.nativeObject[this.propertyKey] = value;
+  }
+
+  public getCanvasWidth() {
+    return (this.obj.nativeObject as any as fabric.StaticCanvas).getWidth();
+  }
+
+  public setCanvasWidth(value: Primitive | IIndexable): void {
+    (this.obj.nativeObject as any as fabric.StaticCanvas).setWidth(value as number);
+  }
+
+  public getCanvasHeight() {
+    return (this.obj.nativeObject as any as fabric.StaticCanvas).getHeight();
+  }
+  
+  public setCanvasHeight(value: Primitive | IIndexable): void {
+    (this.obj.nativeObject as any as fabric.StaticCanvas).setHeight(value as number);
   }
 }

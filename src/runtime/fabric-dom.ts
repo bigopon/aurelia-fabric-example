@@ -144,7 +144,7 @@ export const FabricDOM = new class {
     }
     return node;
   }
-  isNodeInstance(node: any): node is IFabricNode {
+  isNodeInstance(node: any): node is IFabricVNode {
     return node instanceof fabric.Object;
   }
   map(tagName: string, ctor: ((node?: Element) => IFabricVNode)): void {
@@ -467,7 +467,7 @@ function nodeToFabricVNodes(nodes: Node[] | ArrayLike<Node>, parent: IFabricVNod
         const nodeName = nodes[i].nodeName;
         const attributes = (node as Element).attributes;
         const isTarget = (node as Element).classList.contains('au');
-        fabricVNode = new VNode(nodeName, isTarget);
+        fabricVNode = new VNode(nodeName.toLowerCase(), isTarget);
         for (let i = 0, ii = attributes.length; ii > i; ++i) {
           const { value, name }  = attributes[i];
           fabricVNode.setAttribute(name, value);
@@ -476,11 +476,11 @@ function nodeToFabricVNodes(nodes: Node[] | ArrayLike<Node>, parent: IFabricVNod
           targets.push(fabricVNode);
         }
         break;
-      case NodeTypes.TEXT:
-        if (node.textContent.trim() !== '') {
-          fabricVNode = new VNode('#text', false);
-          break; 
-        }
+      // case NodeTypes.TEXT:
+      //   if (node.textContent.trim() !== '') {
+      //     fabricVNode = new VNode('#text', false);
+      //   }
+      //   break;
     }
     if (fabricVNode === null) {
       continue;

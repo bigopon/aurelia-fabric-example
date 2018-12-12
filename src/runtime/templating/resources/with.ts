@@ -9,7 +9,7 @@ import { IFabricRenderLocation } from '../../fabric-dom';
 
 export interface With extends ICustomAttribute {}
 @templateController('with')
-@inject(IViewFactory, IKonvaRenderLocation)
+@inject(IViewFactory, IFabricRenderLocation)
 export class With {
   public static register: IRegistry['register'];
 

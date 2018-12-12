@@ -184,7 +184,7 @@ export class RefBindingRenderer implements IInstructionRenderer {
     this.parser = parser;
   }
 
-  public render(context: IRenderContext, renderable: IRenderable, target: INode, instruction: IRefBindingInstruction): void {
+  public render(context: IRenderContext, renderable: IRenderable, target: IFabricVNode, instruction: IRefBindingInstruction): void {
     const expr = ensureExpression(this.parser, instruction.from, BindingType.IsRef);
     const bindable = new Ref(expr, target, context);
     addBindable(renderable, bindable);
